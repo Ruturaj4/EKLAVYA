@@ -3,6 +3,7 @@
 import os
 import sys
 import struct
+import pickle
 # to work with dwarf
 from elftools.elf.elffile import ELFFile
 
@@ -89,7 +90,7 @@ for f in os.listdir(directory):
 
                     # detect function parameters
                     if DIE.tag == "DW_TAG_formal_parameter":
-                        print(DIE.attributes["DW_AT_name"].value.decode("utf-8"))
+                        # print(DIE.attributes["DW_AT_name"].value.decode("utf-8"))
                         for die in dies:
                             if die.offset == DIE.attributes["DW_AT_type"].value:
                                 functions[current_fun]["args_type"].append( die.attributes["DW_AT_name"].value.decode("utf-8"))
@@ -119,7 +120,6 @@ for f in os.listdir(directory):
                     # if called function address matches
                     if ins.split(" ")[1] == functions[func2]["boundaries"][0]:
                         if func2 not in called_ins:
-                            print(i+1)
                             called_ins[func2] = [{"caller":func,  "call_instr_indices":[i+1]}]
                         else:
                             # check if the caller function is already present
@@ -149,4 +149,5 @@ for f in os.listdir(directory):
     # some names must be there, even if not used
     # set functions
     bin_info["functions"] = functions
-    print(bin_info)
+    with open("pickled_test/"+filename+".pkl", "wb") as f:
+        pickle.dump(bin_info, f)
