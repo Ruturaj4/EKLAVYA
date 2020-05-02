@@ -2,7 +2,6 @@
 
 import os
 import sys
-import struct
 import pickle
 # to work with dwarf
 from elftools.elf.elffile import ELFFile
@@ -14,13 +13,43 @@ import capstone
 # capstone gives me wierd errors - so using objdump instead
 import re
 
+# type modifiers are used in conjuction with base types
+# to idetify correct base types, it is important to consider these constructs
+# considering c language is the source
+# also including pointer and array types in such constructs
+type_modifiers = ["DW_TAG_const_type", "DW_TAG_restrict_type", "DW_TAG_volatile_type", "DW_TAG_pointer_type", "DW_TAG_array_type", "DW_TAG_typedef"]
+
+# type excavation
+def die_recursive(dies, offset):
+    typeinfo = None
+    for die in dies:
+        if die.offset == offset:
+            if die.tag in type_modifiers:
+                # if no DW_AT_type tag is defined then the variable most certainly be of a void type
+                if "DW_AT_type" in die.attributes:
+                    typeinfo = die_recursive(dies, die.attributes["DW_AT_type"].value)
+                else:
+                    return "void"
+            elif die.tag == "DW_TAG_base_type" or die.tag == "DW_TAG_structure_type":
+                if "DW_AT_name" in die.attributes:
+                    return die.attributes["DW_AT_name"].value.decode("utf-8")
+                else:
+                    return None
+    return typeinfo
+
+def parse_parameters(die):
+    # detect function parameters
+    if die.tag == "DW_TAG_formal_parameter":
+        # print(DIE.attributes["DW_AT_name"].value.decode("utf-8"))
+        typeinfo = die_recursive(dies, die.attributes["DW_AT_type"].value)
+        functions[current_fun]["args_type"].append(typeinfo)
+        functions[current_fun]["num_args"] +=1
+
 # take input directory as an input from user
 directory = sys.argv[1]
-for f in os.listdir(directory):
-    # I observed that elffile somehow mutates this object
-    # hence storing file name
-    filename = f
-    path = os.path.join(directory, f)
+for filename in os.listdir(directory):
+    path = os.path.join(directory, filename)
+    print(path)
     with open(path, "rb") as f:
         # Get the object
         elffile = ELFFile(f)
@@ -87,28 +116,24 @@ for f in os.listdir(directory):
                                 slice = True
                             if ins[0] == hex(highpc-1):
                                 break
-
-                    # detect function parameters
-                    if DIE.tag == "DW_TAG_formal_parameter":
-                        # print(DIE.attributes["DW_AT_name"].value.decode("utf-8"))
-                        for die in dies:
-                            if die.offset == DIE.attributes["DW_AT_type"].value:
-                                functions[current_fun]["args_type"].append( die.attributes["DW_AT_name"].value.decode("utf-8"))
-                                functions[current_fun]["num_args"] +=1
+                        # parse children for argument detection
+                        if DIE.has_children:
+                            for die in DIE.iter_children():
+                                parse_parameters(die)
 
                     # Detect structures
                     if DIE.tag == "DW_TAG_structure_type":
-                        current_struct = DIE.attributes["DW_AT_name"].value.decode("utf-8")
-                        if type(DIE.attributes["DW_AT_name"].raw_value) is int:
-                            current_struct = ""
+                        if "DW_AT_name" not in DIE.attributes:
                             continue
-                        bin_info["structures"][current_struct] = []
-
-                    # detect structure members
-                    if DIE.tag == "DW_TAG_member" and current_struct:
-                        for die in dies:
-                            if die.offset == DIE.attributes["DW_AT_type"].value:
-                                bin_info["structures"][current_struct].append( die.attributes["DW_AT_name"].value.decode("utf-8"))
+                        if type(DIE.attributes["DW_AT_name"].raw_value) is not int and DIE.get_parent().tag == "DW_TAG_compile_unit":
+                            current_struct = DIE.attributes["DW_AT_name"].value.decode("utf-8")
+                            if DIE.has_children:
+                                bin_info["structures"][current_struct] = []
+                                for die in DIE.iter_children():
+                                        # Detect structure members
+                                    if die.tag == "DW_TAG_member":
+                                        typeinfo = die_recursive(dies, die.attributes["DW_AT_type"].value)
+                                        bin_info["structures"][current_struct].append(typeinfo)
                 except KeyError:
                     continue
     # store call instruction indices in the current function
