@@ -72,7 +72,7 @@ for filename in os.listdir(directory):
         code = elffile.get_section_by_name(".text")
 
         # save binraw bytes
-        bin_info["binRawBytes"] = code.data().decode('unicode_escape').encode('utf-8')
+        #bin_info["binRawBytes"] = code.data().decode('unicode_escape').encode('utf-8')
 
         md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
         # save disassembly
@@ -102,7 +102,7 @@ for filename in os.listdir(directory):
                         lowpc = DIE.attributes["DW_AT_low_pc"].value
                         # get the upper bound
                         highpc = DIE.attributes["DW_AT_high_pc"].value + lowpc
-                        boundaries = hex(lowpc), hex(highpc-1)
+                        boundaries = lowpc, highpc-1
                         functions[current_fun]["boundaries"] = boundaries
                         # get the return type
                         for die in dies:
@@ -143,7 +143,7 @@ for filename in os.listdir(directory):
             if ins.split(" ")[0] == "call":
                 for func2 in functions:
                     # if called function address matches
-                    if ins.split(" ")[1] == functions[func2]["boundaries"][0]:
+                    if ins.split(" ")[1] == hex(functions[func2]["boundaries"][0]):
                         if func2 not in called_ins:
                             called_ins[func2] = [{"caller":func,  "call_instr_indices":[i+1]}]
                         else:
@@ -169,10 +169,10 @@ for filename in os.listdir(directory):
                 m = re.match(r"^[ 0-9a-f]+:\t([a-f0-9 ]+)", line)
                 if m is not None:
                     # convert each byte into hex
-                    listing.append([hex(int(i, 16)) for i in m.group(1).split()])
+                    listing.append([int(i, 16) for i in m.group(1).split()])
             functions[func]['inst_bytes'] = listing
     # some names must be there, even if not used
     # set functions
     bin_info["functions"] = functions
-    with open("pickled_test/"+filename+".pkl", "wb") as f:
-        pickle.dump(bin_info, f)
+    with open("pickled_coreutils/"+filename+".pkl", "wb") as f:
+        pickle.dump(bin_info, f, protocol=0)
