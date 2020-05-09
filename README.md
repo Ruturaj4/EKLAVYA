@@ -3,6 +3,11 @@
 ## Original Authors
 EKLAVYA is designed by [Zheng Leong Chua](https://www.comp.nus.edu.sg/~chuazl/), Shiqi Shen, [Prateek Saxena](https://www.comp.nus.edu.sg/~prateeks/), [Zhenkai Liang](https://www.comp.nus.edu.sg/~liangzk/).
 
+## Paper Studied By
+Ruturaj Kiran Vaidya
+
+I studied this paper, fix author's code, wrote support scripts, added datasets and fixed readme instructions.
+
 ## Dataset
 
 Choosing correct datasets is one of the important steps. I chose a couple of dataset for this. One - consisting of small binaries and another is the coreutils dataset. Coreutils are the linux bash utility tools. This is one of the famous dataset available, and used as a benchmark in validating reverse engineering works. I have not used dataset given by authors, as there were problems in running the scripts, also I data preprocessing is an important step that I wanted to do. It taught me a lot and it is the important part of this project.
@@ -140,7 +145,7 @@ Options:
 
 ### Split Dataset
 
-Before Training RNN, it is necessary to split the dataset.
+Before Training RNN, it is necessary to split the dataset. This script can be found in "support_scripts" directory.
 
 ```
 python dataset_split.py ../../../support_scripts/train_mov/ ../../../support_scripts/test_mov/
