@@ -97,9 +97,11 @@ python prep_binary.py binary_directory/
 ```
 `binary_directory/` is where the binaries compiled with debug information are stored.
 
+Note that after preparing, it is necessary to clean the files.
+
 ### Train Embedding Model
 
-Asuming your dataset is saved at the location `../../dataset/x64utils/`. Note that the provision of correct path is important. Project may break otherwise.
+Asuming your cleaned dataset is saved at the location `../../dataset/x64utils/`. Create train_mov and test_mov directories in your dataset/ directory and copy x64utils/ files in respective directories with - say 80-20 split. Note that the provision of correct path is important. Project may break otherwise.
 
 #### Prepare the input file for training embedding model
 ```
@@ -148,7 +150,7 @@ Options:
 Before Training RNN, it is necessary to split the dataset. This script can be found in "support_scripts" directory.
 
 ```
-python dataset_split.py ../../../support_scripts/train_mov/ ../../../support_scripts/test_mov/
+python dataset_split.py ../../../dataset/train_mov/ ../../../dataset/test_mov/
 ```
 
 ### Train RNN Model
