@@ -1,42 +1,13 @@
 # Neural Nets Can Learn Function Type Signatures From Binaries
 
-## Authors
+## Original Authors
 EKLAVYA is designed by [Zheng Leong Chua](https://www.comp.nus.edu.sg/~chuazl/), Shiqi Shen, [Prateek Saxena](https://www.comp.nus.edu.sg/~prateeks/), [Zhenkai Liang](https://www.comp.nus.edu.sg/~liangzk/).
 
 ## Dataset
-The dataset available from this page is the collection of function type signatures, which includes function banaries, number of arguments and types. It is a good dataset for people who want to try learning techniques or heuristic approaches in binary analysis while spending less effort on collecting and preprocessing.
 
- The dataset consists of three parts, which is described below:
+Choosing correct datasets is one of the important steps. I chose a couple of dataset for this. One - consisting of small binaries and another is the coreutils dataset. Coreutils are the linux bash utility tools. This is one of the famous dataset available, and used as a benchmark in validating reverse engineering works. I have not used dataset given by authors, as there were problems in running the scripts, also I data preprocessing is an important step that I wanted to do. It taught me a lot and it is the important part of this project.
 
-- [binary.tar.gz](https://drive.google.com/open?id=0B2qBKMQRQLHGS1JESVQ0TlF1eWs). The compressed file saves 5168 binaries. These binaries are from 8 distinct packages: binutils, coreutils, findutils, sg3utils, utillinux, inetutils, diffutils, and usbutils.
-These 5168 binaries are obtained by using two commonly used compilers: *gcc* and *clang*, with different optimization levels ranging from *O0* to *O3* for both x86 and x64.
-
-- [pickles.tar.gz](https://drive.google.com/open?id=0B2qBKMQRQLHGdGpuTUlmMmZJYXM). The compressed file saves the assembly code of each function and the ground truth of the function arguments by parsing the DWARF debug information. 
-
-- [clean_pickles.tar.gz](https://drive.google.com/open?id=0B2qBKMQRQLHGOFphWjkzcnV2LTQ). The compressed file saves the assembly code and the ground truth of the function arguments for sanitized functions. For this dataset, we removed the functions which are duplicates of other functions in the dataset. Given that the same piece of code compiled with different binaries will result in different offsets generated,we chose to remove all direct address used by instructions found in the function. For example, the instruction *'je 0x98'* are represented as *'je '*. After the substituion, we hash the function and remove functions with the same hashes. Other than duplicates, we also removed functions with less than four instructions as these small functions typically do not have any operation on arguments. 
-
-
-### Function Representation
-A function is represented as a dictionary having the following fields:
-
-- **num_args**: Integer - Number of arguments.
-- **args_type**: List - Type of each argument, as String, in the order they appear in the function declaration.
-- **ret_type**: String - Type of the value returned by the function.
-- **inst_strings**: List - The assembly code of each instruction composing the function, as strings.
-- **inst_bytes**: List - The bytecode of each instruction composing the function, as an array of values. (Each instruction is represented by one array of bytes.)
-- **boundaries**: Tuple (Integer, Integer) - The starting and ending address of the function.
-
-**Example:**
-```
-FuncDict = {
-	"num_args": 3,
-	"args_type": ["int", "char", "struct structure1*"], 
-	"ret_type": "int", 
-	"inst_strings": ["mov eax, 1", "nop", "push 3"],
-	"inst_bytes": [[0x01, 0x02], [0xff], [0x20, 0x30, 0x40]],
-	"boundaries": (0x80010, 0x800f0)
-}
-```
+The data preparation consists of parsing function and argument information, along with other information present in the binary. Following is the "global" dictionary representation. Note that not all of the fields are important. But, I fetched all the fields mentioned in this structure. This allowed me learn more about how to fetch this information.
 
 ### Binary Representation
 A binary saved in **pickles.tar.gz** and **clean_pickles.tar.gz** is represented as a Dict object, having the following fields:
@@ -82,22 +53,54 @@ BinaryFileDict = {
     }
 }
 ```
+
+### Function Representation
+A function is represented as a dictionary having the following fields:
+
+- **num_args**: Integer - Number of arguments.
+- **args_type**: List - Type of each argument, as String, in the order they appear in the function declaration.
+- **ret_type**: String - Type of the value returned by the function.
+- **inst_strings**: List - The assembly code of each instruction composing the function, as strings.
+- **inst_bytes**: List - The bytecode of each instruction composing the function, as an array of values. (Each instruction is represented by one array of bytes.)
+- **boundaries**: Tuple (Integer, Integer) - The starting and ending address of the function.
+
+**Example:**
+```
+FuncDict = {
+	"num_args": 3,
+	"args_type": ["int", "char", "struct structure1*"], 
+	"ret_type": "int", 
+	"inst_strings": ["mov eax, 1", "nop", "push 3"],
+	"inst_bytes": [[0x01, 0x02], [0xff], [0x20, 0x30, 0x40]],
+	"boundaries": (0x80010, 0x800f0)
+}
+```
 ## Code
 
 ### Requirements
 
-- tensorflow
+This project needs specific requirements to run it correctly (this information was lacking in the authors description of the project).
+
+- python 2.7
+- tensorflow 0.12
 - numpy
+
+### Prepare Dataset
+
+```
+python prep_binary.py binary_directory/
+```
+`binary_directory/` is where the binaries compiled with debug information are stored.
 
 ### Train Embedding Model
 
+Asuming your dataset is saved at the location `../../dataset/x64utils/`. Note that the provision of correct path is important. Project may break otherwise.
+
 #### Prepare the input file for training embedding model
 ```
-python prep_embed_input.py [options] -i input_folder
+python prep_embed_input.py -i ../../dataset/x64utils/
 ```
 [Link to prep_embed_input.py](code/embedding/prep_embed_input.py)
-
-- **input_folder**: String - The data folder saving all binary information.
 
 Options:
 
@@ -107,11 +110,9 @@ Options:
 
 #### Train the embedding model
 ```
-python train_embed.py -i input_path
+mkdir embed_output; python train_embed.py -i embed_input
 ```
 [Link to train_embed.py](code/embedding/train_embed.py)
-
-- **input_path**: String - The input file for training embedding model 
 
 Options:
 - **-o**: String - The output folder saving the trained embedding information
@@ -128,19 +129,26 @@ Options:
 
 #### Save the embedding vector
 ```
-python save_embeddings.py [options] -p embed_pickle_path -m model_path
+python save_embeddings.py -p embed_output/embed_1.emb -m embed_output/model_1/model_80.ckpt
 ```
 [Link to save_embeddings.py](code/embedding/save_embeddings.py)
 
-- **embed_pickle_path**: String - The file saving all training parameters
-- **model_path**: String - The file saving the trained embedding model
+Note that, it is important here to give the correct model path.
 
 Options:
 - **-o**: String: The output file saving the embedding vector for each instruction
 
+### Split Dataset
+
+Before Training RNN, it is necessary to split the dataset.
+
+```
+python dataset_split.py ../../../support_scripts/train_mov/ ../../../support_scripts/test_mov/
+```
+
 ### Train RNN Model
 ```
-python train.py [options] -d data_folder -o output_dir -f split_func_path -e embed_path
+python train.py -d ../../../dataset/x64utils/ -o output_folder/ -f split_func.pkl -e ../../embedding/embed.pkl
 ```
 [Link to train.py](code/RNN/train/train.py)
 
@@ -228,7 +236,7 @@ embedDict = {
 ### Testing RNN Model
 Usage: 
 ```
-python eval.py [options] -d data_folder -f split_func_path -e embed_path -m model_dir -o output_dir
+python eval.py -d ../../../dataset/x64utils/ -f split_func.pkl -e ../../embedding/embed.pkl -m ../train/output_folder/model -o output_dir
 ```
 [Link to eval.py](code/RNN/test/eval.py)
 
@@ -268,5 +276,5 @@ Zheng Leong Chua, Shiqi Shen, Prateek Saxena, Zhenkai Liang.
 
 In the 26th USENIX Security Symposium (Usenix Security 2017)
 
-## Project Members
+## Original Project Members
 Zheng Leong Chua, Shiqi Shen, Prateek Saxena, Zhenkai Liang, Valentin Ghita.
