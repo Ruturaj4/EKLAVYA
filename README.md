@@ -89,6 +89,8 @@ This project needs specific requirements to run it correctly (this information w
 - python 2.7
 - tensorflow 0.12
 - numpy
+- pyelftools
+- capstone
 
 ### Prepare Dataset
 
